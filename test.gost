@@ -1,0 +1,8 @@
+struct Book {
+    title, author string
+    copies int
+}
+
+fn main(){
+    print("~~~~~~~~~", 123+25, 4534)
+}
