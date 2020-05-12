@@ -1,6 +1,10 @@
 struct Book {
-    title author string
     copies int
 }
 
+fn add(){
+    
+    print(1+2, 2, 3)    
+
+}
 

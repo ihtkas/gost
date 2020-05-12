@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 mod parser;
+mod error;
 use parser::lexer;
 
 fn main() {
@@ -10,14 +11,16 @@ fn main() {
     // let mut tokenizer = lexer::Tokenizer::new(content);
     // let mut flag = true;
     // while flag {
-    //     match tokenizer.next_token() {
-    //         Ok(Some(t)) => {
+    //     match tokenizer.next_token(false) {
+    //         Ok(t) => {
     //             println!("----{}--- {}", t, t.kind());
     //             if let lexer::TokenKind::EOF = t.kind() {
     //                 flag = false;
     //             }
     //         }
-    //         _ => (),
+    //         Err((pos, err)) => {
+    //             println!("----{:?}--- {}",pos, err);
+    //         },
     //     }
     // }
     let res = parser::Parser::parse(content);
