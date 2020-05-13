@@ -18,13 +18,13 @@ fn main() {
     //                 flag = false;
     //             }
     //         }
-    //         Err((pos, err)) => {
-    //             println!("----{:?}--- {}",pos, err);
+    //         Err(err) => {
+    //             println!("----{:?}---", err);
     //         },
     //     }
     // }
+    
     let res = parser::Parser::parse(content);
-
     println!("ast: {:?} ###",res);
 }
 

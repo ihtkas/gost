@@ -1,5 +1,6 @@
 use crate::parser::lexer;
 
+use std::fmt;
 use std::mem;
 
 #[derive(Debug)]
@@ -348,12 +349,50 @@ impl Expr {
     }
 }
 
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expr::FuncCall(expr) => write!(f, "{}", expr),
+            Expr::BinaryExpr(expr) => write!(f, "{}", expr),
+            Expr::CoveredExpr(expr) => write!(f, "{}", expr),
+            Expr::Literal(tk) | Expr::Identifier(tk) => write!(f, "{}", tk.value()),
+            Expr::Empty => write!(f, ""),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct FuncCall {
     name: lexer::Token,
     pos: lexer::Pos,
     end: lexer::Pos,
     args: Vec<Expr>,
+}
+
+impl fmt::Display for FuncCall {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let res = write!(f, "{}(", self.name);
+        if let Err(err) = res {
+            return Err(err);
+        }
+        if self.args().len() > 0 {
+            let res = self.args()[0].fmt(f);
+            if let Err(err) = res {
+                return Err(err);
+            }
+        }
+        for arg in &self.args[1..] {
+            let res = write!(f, " ,");
+            if let Err(err) = res {
+                return Err(err);
+            }
+            let res = arg.fmt(f);
+            if let Err(err) = res {
+                return Err(err);
+            }
+        }
+        return write!(f, ")");
+    }
 }
 
 impl FuncCall {
@@ -396,6 +435,12 @@ enum Precedence {
     Equal,
 }
 
+impl fmt::Display for BinaryExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({} {} {})", self.lhs, self.operator(), self.rhs())
+    }
+}
+
 impl BinaryExpr {
     pub fn new(
         lhs: Box<Expr>,
@@ -428,29 +473,60 @@ impl BinaryExpr {
     pub fn operator(&self) -> &lexer::Token {
         return &self.operator;
     }
-    
+
     pub fn add(mut self, op: lexer::Token, rhs: Expr) -> BinaryExpr {
-        let st = lexer::Pos::new(0, 0);
+        let (expr, ret_expr) = self.add_if_lesser(op, rhs);
+        if let Some(ret_expr) = ret_expr {
+            let pos = *expr.pos();
+            let end = ret_expr.1.end();
+            BinaryExpr::new(
+                Box::new(Expr::BinaryExpr(expr)),
+                Box::new(ret_expr.1),
+                ret_expr.0,
+                pos,
+                end,
+            )
+        } else {
+            expr
+        }
+    }
+
+    pub fn add_if_lesser(
+        mut self,
+        op: lexer::Token,
+        rhs: Expr,
+    ) -> (BinaryExpr, Option<(lexer::Token, Expr)>) {
+        let mut ret_rhs: Option<(lexer::Token, Expr)> = None;
         match *self.rhs {
             Expr::BinaryExpr(expr) => {
-                self.rhs = Box::new(Expr::BinaryExpr(expr.add(op, rhs)));
-                return self;
+                let (expr, ret_expr) = expr.add_if_lesser(op, rhs);
+                self.rhs = Box::new(Expr::BinaryExpr(expr));
+                if let Some(ret_expr) = ret_expr {
+                    ret_rhs = Some(ret_expr);
+                } else {
+                    return (self, None);
+                }
             }
-            _ => {}
+            _ => {
+                ret_rhs = Some((op, rhs));
+            }
         }
-        let op1 = *self.operator.kind();
-        let op2 = *self.operator().kind();
-        if BinaryExpr::findPrecendence(op1, op2) == Precedence::Lesser {
-            let st = self.rhs().pos();
-            let end = rhs.end();
-            let mut x: Box<Expr> = Box::new(Expr::Empty);
-            mem::swap(&mut self.rhs, &mut x);
-            let new_expr = BinaryExpr::new(x, Box::new(rhs), op, st, end);
-            self.rhs = Box::new(Expr::BinaryExpr(new_expr));
-            return self;
+        if let Some(ret_rhs) = ret_rhs {
+            let op1 = *self.operator.kind();
+            let op2 = *ret_rhs.0.kind();
+            if BinaryExpr::findPrecendence(op1, op2) == Precedence::Lesser {
+                let st = self.rhs().pos();
+                let end = ret_rhs.1.end();
+                let mut x: Box<Expr> = Box::new(Expr::Empty);
+                mem::swap(&mut self.rhs, &mut x);
+                let new_expr = BinaryExpr::new(x, Box::new(ret_rhs.1), ret_rhs.0, st, end);
+                self.rhs = Box::new(Expr::BinaryExpr(new_expr));
+                (self, None)
+            } else {
+                return (self, Some(ret_rhs));
+            }
         } else {
-            let end = rhs.end();
-            return BinaryExpr::new(Box::new(Expr::BinaryExpr(self)), Box::new(rhs), op, st, end);
+            (self, None)
         }
     }
 
@@ -555,6 +631,12 @@ pub struct CoveredExpr {
     expr: Expr,
     pos: lexer::Pos,
     end: lexer::Pos,
+}
+
+impl fmt::Display for CoveredExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({})", self.expr)
+    }
 }
 
 impl CoveredExpr {

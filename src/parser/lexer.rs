@@ -420,6 +420,8 @@ impl<'a> Tokenizer {
                                     Pos::new(self.cur_line_no, pos),
                                     None,
                                 ));
+                            }else{
+                                str.pop();
                             }
                         }
                         _ => {}

@@ -1,18 +1,19 @@
 pub mod ast;
 pub mod lexer;
+use lexer::{TokenKind as Kind, Token, Pos, Tokenizer};
 // pub mod error;
 // use std::rc::Rc;
 use crate::error::Error;
 
 pub struct Parser {
-    tokenizer: lexer::Tokenizer,
+    tokenizer: Tokenizer,
     defs: Vec<ast::Definition>,
 }
 
 impl Parser {
     fn new(content: String) -> Parser {
         Parser {
-            tokenizer: lexer::Tokenizer::new(content),
+            tokenizer: Tokenizer::new(content),
             defs: Vec::new(),
         }
     }
@@ -23,21 +24,21 @@ impl Parser {
             let tk = t.next_token(true);
             match tk {
                 Ok(tk) => match tk.kind() {
-                    lexer::TokenKind::StructKeyword => {
+                    Kind::StructKeyword => {
                         let err = p.parse_struct(tk);
                         if let Some(err) = err {
                             return Err(err);
                         }
                     }
 
-                    lexer::TokenKind::FuncKeyword => {
+                    Kind::FuncKeyword => {
                         let err = p.parse_func(tk);
                         if let Some(err) = err {
                             return Err(err);
                         }
                     }
-                    lexer::TokenKind::NewLine => {}
-                    lexer::TokenKind::EOF => {
+                    Kind::NewLine => {}
+                    Kind::EOF => {
                         return Ok(ast::File::new(p.defs));
                     }
                     _ => {
@@ -54,16 +55,16 @@ impl Parser {
         }
     }
 
-    fn parse_struct(&mut self, keyword: lexer::Token) -> Option<Error> {
+    fn parse_struct(&mut self, keyword: Token) -> Option<Error> {
         let mut tk = self.tokenizer.next_token(false);
-        let mut last_pos: lexer::Pos;
+        let mut last_pos: Pos;
         match tk {
             Err(err) => {
                 return Some(err);
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::Space {
+                if *tk.kind() == Kind::Space {
                     last_pos = *tk.end_pos();
                 } else {
                     return Some(Error::new(
@@ -82,7 +83,7 @@ impl Parser {
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::Identifier {
+                if *tk.kind() == Kind::Identifier {
                     name = tk;
                 // last_pos = *name.end_pos();
                 } else {
@@ -103,11 +104,14 @@ impl Parser {
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::OpenCurly {
+                if *tk.kind() == Kind::OpenCurly {
                     open_curly = tk;
                     last_pos = *open_curly.end_pos();
                 } else {
-                    return Some(Error::new(*tk.start_pos(), "Expecting { after struct name".to_string()));
+                    return Some(Error::new(
+                        *tk.start_pos(),
+                        "Expecting { after struct name".to_string(),
+                    ));
                 }
             }
         }
@@ -125,8 +129,8 @@ impl Parser {
             Ok(None) => {
                 let tk = self.tokenizer.next_token_checked(
                     false,
-                    lexer::TokenKind::CloseCurly,
-                    lexer::TokenKind::CloseCurly,
+                    Kind::CloseCurly,
+                    Kind::CloseCurly,
                 );
                 match tk {
                     Err(err) => {
@@ -153,9 +157,9 @@ impl Parser {
                     return Some(err);
                 }
                 Ok(tk) => {
-                    if *tk.kind() == lexer::TokenKind::NewLine {
+                    if *tk.kind() == Kind::NewLine {
                         last_pos = *tk.end_pos();
-                    } else if *tk.kind() == lexer::TokenKind::CloseCurly {
+                    } else if *tk.kind() == Kind::CloseCurly {
                         self.defs.push(ast::Definition::StructDef(ast::Struct::new(
                             *keyword.start_pos(),
                             *tk.end_pos(),
@@ -181,16 +185,16 @@ impl Parser {
         }
     }
 
-    fn parse_func(&mut self, keyword: lexer::Token) -> Option<Error> {
+    fn parse_func(&mut self, keyword: Token) -> Option<Error> {
         let mut tk = self.tokenizer.next_token(false);
-        let mut last_pos: lexer::Pos;
+        let mut last_pos: Pos;
         match tk {
             Err(err) => {
                 return Some(err);
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::Space {
+                if *tk.kind() == Kind::Space {
                     last_pos = *tk.end_pos();
                 } else {
                     return Some(Error::new(
@@ -209,7 +213,7 @@ impl Parser {
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::Identifier {
+                if *tk.kind() == Kind::Identifier {
                     name = tk;
                     last_pos = *name.end_pos();
                 } else {
@@ -230,11 +234,14 @@ impl Parser {
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::OpenBrace {
+                if *tk.kind() == Kind::OpenBrace {
                     open_brace = tk;
                     last_pos = *open_brace.end_pos();
                 } else {
-                    return Some(Error::new(last_pos, "Expecting ( after Func name".to_string()));
+                    return Some(Error::new(
+                        last_pos,
+                        "Expecting ( after Func name".to_string(),
+                    ));
                 }
             }
         }
@@ -268,11 +275,14 @@ impl Parser {
             }
 
             Ok(tk) => {
-                if *tk.kind() == lexer::TokenKind::OpenCurly {
+                if *tk.kind() == Kind::OpenCurly {
                     open_curly = tk;
                     last_pos = *open_curly.end_pos();
                 } else {
-                    return Some(Error::new(last_pos, "Expecting { after Func name".to_string()));
+                    return Some(Error::new(
+                        last_pos,
+                        "Expecting { after Func name".to_string(),
+                    ));
                 }
             }
         }
@@ -290,8 +300,8 @@ impl Parser {
             Ok(None) => {
                 let tk = self.tokenizer.next_token_checked(
                     false,
-                    lexer::TokenKind::CloseCurly,
-                    lexer::TokenKind::CloseCurly,
+                    Kind::CloseCurly,
+                    Kind::CloseCurly,
                 );
                 match tk {
                     Err(err) => {
@@ -329,14 +339,14 @@ impl Parser {
         }
     }
 
-    // fn consume_space(&mut self) -> Result<(Option<lexer::Token>, usize), Error> {
+    // fn consume_space(&mut self) -> Result<(Option<Token>, usize), Error> {
     //     let mut count: usize = 0;
     //     loop {
     //         let tk = self.tokenizer.next_token(false);
     //         match tk {
     //             Err(tk) => return Err(tk),
     //             Ok(tk) => {
-    //                 if *tk.kind() == lexer::TokenKind::Space {
+    //                 if *tk.kind() == Kind::Space {
     //                     count += 1;
     //                 } else {
     //                     return Ok((Some(tk), count));
@@ -346,24 +356,24 @@ impl Parser {
     //     }
     // }
 
-    fn consume_new_line_space(&mut self) -> Result<Option<lexer::Token>, Error> {
-        let mut ret_tk: Option<lexer::Token> = None;
+    fn consume_new_line_space(&mut self) -> Result<Option<Token>, Error> {
+        let mut ret_tk: Option<Token> = None;
 
         loop {
             let tk = self.tokenizer.next_token_checked(
                 false,
-                lexer::TokenKind::NewLine,
-                lexer::TokenKind::Space,
+                Kind::NewLine,
+                Kind::Space,
             );
             match tk {
                 Err(tk) => return Err(tk),
                 Ok(Some(tk)) => {
-                    if *tk.kind() == lexer::TokenKind::NewLine {
+                    if *tk.kind() == Kind::NewLine {
                         match &mut ret_tk {
                             None => ret_tk = Some(tk),
                             Some(v) => v.add_discarded(tk),
                         };
-                    } else if *tk.kind() == lexer::TokenKind::Space {
+                    } else if *tk.kind() == Kind::Space {
                         match &mut ret_tk {
                             Some(v) => v.add_discarded(tk),
                             // can add to discarded only if new line is encountered already.
@@ -372,7 +382,7 @@ impl Parser {
                     } else {
                         // Not possible
                         return Err(Error::new(
-                            lexer::Pos::new(0, 0),
+                            Pos::new(0, 0),
                             "Parser handling error. Hit a dead end".to_string(),
                         ));
                     }
@@ -384,9 +394,9 @@ impl Parser {
 
     fn parse_struct_prop_def(
         &mut self,
-        mut last_pos: lexer::Pos,
+        mut last_pos: Pos,
     ) -> Result<Box<ast::PropDef>, Error> {
-        let mut names = Box::new(Vec::<lexer::Token>::new());
+        let mut names = Box::new(Vec::<Token>::new());
         let mut ident_count: usize = 0;
         loop {
             let tk = self.tokenizer.next_token(false);
@@ -396,15 +406,15 @@ impl Parser {
                 }
 
                 Ok(tk) => {
-                    if *tk.kind() == lexer::TokenKind::Identifier || tk.is_datatype() {
+                    if *tk.kind() == Kind::Identifier || tk.is_datatype() {
                         last_pos = *tk.end_pos();
                         (*names).push(tk);
                         ident_count += 1;
-                    } else if *tk.kind() == lexer::TokenKind::Space {
+                    } else if *tk.kind() == Kind::Space {
                         last_pos = *tk.end_pos();
                     // do nothing
                     } else {
-                        if *tk.kind() == lexer::TokenKind::NewLine {
+                        if *tk.kind() == Kind::NewLine {
                             if ident_count < 2 {
                                 return Err(Error::new(
                                     last_pos,
@@ -436,9 +446,9 @@ impl Parser {
 
     fn parse_func_param_defs(
         &mut self,
-        mut last_pos: lexer::Pos,
-    ) -> Result<(Box<Vec<ast::ParamDef>>, lexer::Pos), Error> {
-        let mut names = Box::new(Vec::<lexer::Token>::new());
+        mut last_pos: Pos,
+    ) -> Result<(Box<Vec<ast::ParamDef>>, Pos), Error> {
+        let mut names = Box::new(Vec::<Token>::new());
         let mut prop_defs = Box::new(Vec::<ast::ParamDef>::new());
         let mut found_comma = false;
         loop {
@@ -449,7 +459,7 @@ impl Parser {
                 }
 
                 Ok(tk) => {
-                    if *tk.kind() == lexer::TokenKind::Identifier || tk.is_datatype() {
+                    if *tk.kind() == Kind::Identifier || tk.is_datatype() {
                         if (&*names).len() > 1 {
                             if !found_comma {
                                 let list = names.as_ref();
@@ -460,22 +470,22 @@ impl Parser {
                                     *names,
                                     tk,
                                 ));
-                                names = Box::new(Vec::<lexer::Token>::new());
+                                names = Box::new(Vec::<Token>::new());
                             }
                         } else {
                             last_pos = *tk.end_pos();
                             (*names).push(tk);
                         }
                         found_comma = false;
-                    } else if *tk.kind() == lexer::TokenKind::Space {
+                    } else if *tk.kind() == Kind::Space {
                         last_pos = *tk.end_pos();
                     // do nothing
-                    } else if *tk.kind() == lexer::TokenKind::Comma {
+                    } else if *tk.kind() == Kind::Comma {
                         last_pos = *tk.end_pos();
                         found_comma = true;
                     // do nothing
                     } else {
-                        if *tk.kind() == lexer::TokenKind::CloseBrace {
+                        if *tk.kind() == Kind::CloseBrace {
                             if names.len() != 0 {
                                 return Err(Error::new(
                                     last_pos,
@@ -496,18 +506,26 @@ impl Parser {
         }
     }
 
-    fn parse_return_type(&mut self) -> Result<Option<lexer::Token>, Error> {
-        return self.tokenizer.next_token_checked(
-            true,
-            lexer::TokenKind::Identifier,
-            lexer::TokenKind::Identifier,
-        );
+    fn parse_return_type(&mut self) -> Result<Option<Token>, Error> {
+        let res = self.tokenizer.next_token(true);
+        match res {
+            Err(err) => Err(err),
+            Ok(tk) => match *tk.kind() {
+                Kind::Identifier
+                | Kind::StringDTKeyword
+                | Kind::UIntDTKeyword => Ok(Some(tk)),
+                _ => {
+                    self.tokenizer.push_token(tk);
+                    Ok(None)
+                },
+            },
+        }
     }
 
     fn parse_block_content(
         &mut self,
-        mut last_pos: lexer::Pos,
-    ) -> Result<(Vec<ast::Stmt>, lexer::Pos), Error> {
+        mut last_pos: Pos,
+    ) -> Result<(Vec<ast::Stmt>, Pos), Error> {
         let mut stmts = Vec::<ast::Stmt>::new();
         loop {
             let res = self.consume_new_line_space();
@@ -522,8 +540,8 @@ impl Parser {
             }
             let tk = self.tokenizer.next_token_checked(
                 true,
-                lexer::TokenKind::CloseCurly,
-                lexer::TokenKind::CloseCurly,
+                Kind::CloseCurly,
+                Kind::CloseCurly,
             );
             match tk {
                 Err(err) => {
@@ -546,16 +564,16 @@ impl Parser {
                 _ => {}
             }
 
-            let expr = self.parse_expr(lexer::TokenKind::NewLine, lexer::TokenKind::NewLine);
+            let expr = self.parse_expr(Kind::NewLine, Kind::NewLine);
             match expr {
                 Err(err) => {
                     return Err(err);
                 }
                 Ok((expr, _)) => {
+                    println!("{}", expr);
                     stmts.push(ast::Stmt::Expr(expr));
                     continue;
                 }
-                _ => {}
             }
         }
     }
@@ -566,11 +584,11 @@ impl Parser {
 
     fn parse_expr(
         &mut self,
-        delimiter1: lexer::TokenKind,
-        delimiter2: lexer::TokenKind
-    ) -> Result<(ast::Expr,lexer::Token) , Error> {
+        delimiter1: Kind,
+        delimiter2: Kind,
+    ) -> Result<(ast::Expr, Token), Error> {
         let mut expr: Option<ast::Expr> = None;
-        let mut operator: Option<lexer::Token> = None;
+        let mut operator: Option<Token> = None;
         loop {
             let tk = self.tokenizer.next_token(false);
             let mut loop_expr: Option<ast::Expr> = None;
@@ -582,7 +600,7 @@ impl Parser {
                     if *tk.kind() == delimiter1 || *tk.kind() == delimiter2 {
                         if let None = operator {
                             if let Some(expr) = expr {
-                                return Ok((expr,tk));
+                                return Ok((expr, tk));
                             }
                             return Err(Error::new(
                                 *tk.start_pos(),
@@ -594,17 +612,22 @@ impl Parser {
                         operator = Some(tk);
                     } else {
                         match tk.kind() {
-                            lexer::TokenKind::Space => {} //skip
-                            lexer::TokenKind::Int | lexer::TokenKind::StringLiteral => {
+                            Kind::Space => {} //skip
+                            Kind::Int | Kind::StringLiteral => {
                                 loop_expr = Some(ast::Expr::Literal(tk));
                             }
-                            lexer::TokenKind::Identifier => match self.parse_identifier_expr(tk) {
+                            Kind::Identifier => match self.parse_identifier_expr(tk) {
                                 Err(err) => return Err(err),
                                 Ok(ident_expr) => {
                                     loop_expr = Some(ident_expr);
                                 }
                             },
-                            _ => return Err(Error::new(*tk.start_pos(), "Not handled yet".to_string())),
+                            _ => {
+                                return Err(Error::new(
+                                    *tk.start_pos(),
+                                    "Not handled yet".to_string(),
+                                ))
+                            }
                         }
                     }
                 }
@@ -636,18 +659,15 @@ impl Parser {
         }
     }
 
-    fn parse_identifier_expr(
-        &mut self,
-        iden: lexer::Token,
-    ) -> Result<ast::Expr, Error> {
+    fn parse_identifier_expr(&mut self, iden: Token) -> Result<ast::Expr, Error> {
         let tk = self.tokenizer.next_token(true);
         match tk {
             Err(err) => {
                 return Err(err);
             }
             Ok(tk) => match tk.kind() {
-                lexer::TokenKind::OpenBrace => {
-                    return self.parse_func_call(iden, tk);
+                Kind::OpenBrace => {
+                    return self.parse_func_call(iden);
                 }
                 _ => return Err(Error::new(*tk.start_pos(), "Not handled yet".to_string())),
             },
@@ -656,17 +676,14 @@ impl Parser {
 
     fn parse_func_call(
         &mut self,
-        iden: lexer::Token,
-        brace: lexer::Token,
-    ) -> Result<ast::Expr, Error> {
-        let mut expr: Option<ast::Expr>;
-        let mut operator: Option<lexer::Token>;
-        let mut args = Vec::<ast::Expr>::new();
+        iden: Token,
+       ) -> Result<ast::Expr, Error> {
+         let mut args = Vec::<ast::Expr>::new();
         loop {
             let tk = self.tokenizer.next_token_checked(
                 true,
-                lexer::TokenKind::CloseBrace,
-                lexer::TokenKind::CloseBrace,
+                Kind::CloseBrace,
+                Kind::CloseBrace,
             );
             match tk {
                 Err(err) => {
@@ -681,14 +698,15 @@ impl Parser {
                     )));
                 }
                 Ok(None) => {
-                    let res = self.parse_expr(lexer::TokenKind::Comma, lexer::TokenKind::CloseBrace);
+                    let res =
+                        self.parse_expr(Kind::Comma, Kind::CloseBrace);
                     match res {
                         Err(err) => {
                             return Err(err);
                         }
                         Ok((expr, delemiter_tk)) => {
                             args.push(expr);
-                            if *delemiter_tk.kind() == lexer::TokenKind::CloseBrace{
+                            if *delemiter_tk.kind() == Kind::CloseBrace {
                                 return Ok(ast::Expr::FuncCall(ast::FuncCall::new(
                                     *iden.start_pos(),
                                     *delemiter_tk.end_pos(),

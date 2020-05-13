@@ -1,10 +1,12 @@
 struct Book {
-    copies int
+    author title string
+    copies uint
 }
 
-fn add(){
-    
+fn add() uint {
+    1+2
+    1*2
+    1+2*3+4
+    "Hello" + "world"
     print(1+2, 2, 3)    
-
 }
-
